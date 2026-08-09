@@ -5,12 +5,12 @@
 اگه پروژه رو روی GitHub آپلود کردی، فقط این یه خط رو روی VPS بزن:
 
 ```bash
-curl -o deploy.sh https://github.com/Behnam-Borzoo/mcoc-twitch-bot/blob/main/deploy.sh && bash deploy.sh
+curl -o deploy.sh https://raw.githubusercontent.com/YOUR_USERNAME/mcoc-twitch-bot/main/deploy.sh && bash deploy.sh
 ```
 
 یا اگه فایل `deploy.sh` رو دستی روی سرور آپلود کردی:
 ```bash
-bash deploy.sh https://github.com/Behnam-Borzoo/mcoc-twitch-bot.git
+bash deploy.sh https://github.com/YOUR_USERNAME/mcoc-twitch-bot.git
 ```
 
 این اسکریپت خودش:
@@ -114,3 +114,121 @@ pm2 stop mcoc-bot        # خاموش کردن موقت
 ```
 
 هر وقت تست کردی و کار کرد، خبر بده بریم سراغ فاز بعدی.
+
+---
+
+## راه‌اندازی روی VPS (بدون نیاز به PC) 🚀
+
+از اونجایی که با iPad/iPhone کار می‌کنی و Termius داری، این ساده‌ترین مسیره:
+
+### مرحله ۱: پروژه رو به GitHub بفرست
+1. یه Repo جدید بساز (ترجیحاً **Private**، چون بعداً رمزها رو دستی روی سرور می‌ذاری نه توی گیت)
+2. فایل‌های `index.js`, `package.json`, `.gitignore`, `deploy.sh` رو آپلود کن (از GitHub وب یا اپ)
+3. فایل `.env` رو آپلود **نکن** — این حاوی توکن و API Key هست و باید فقط روی خود سرور باشه
+
+### مرحله ۲: با Termius به VPS وصل شو
+مثل همیشه با IP و یوزر/پسورد یا SSH Key سرورت وصل شو.
+
+### مرحله ۳: اسکریپت نصب رو اجرا کن
+داخل ترمینال VPS بزن:
+```bash
+curl -o deploy.sh https://raw.githubusercontent.com/USERNAME/mcoc-twitch-bot/main/deploy.sh
+chmod +x deploy.sh
+./deploy.sh https://github.com/USERNAME/mcoc-twitch-bot.git
+```
+(به‌جای `USERNAME` اسم گیت‌هابت رو بذار — اگه Repo رو Private کردی، اول باید یه Personal Access Token بسازی و توی لینک کلون از اون استفاده کنی، بگو راهنماییت کنم)
+
+این اسکریپت خودش:
+- Node.js و PM2 رو نصب می‌کنه (اگه نباشن)
+- پروژه رو از GitHub می‌کشه پایین
+- فایل `.env` رو می‌سازه و با **nano** بازش می‌کنه تا مقادیر واقعی (Token, API Key, نام کانال) رو دستی پر کنی
+- Bot رو با **PM2** اجرا می‌کنه — یعنی حتی اگه Termius رو ببندی یا صفحه iPad خاموش بشه، Bot همچنان روشن می‌مونه
+
+### مرحله ۴: راه‌اندازی خودکار بعد از ری‌استارت سرور
+در پایان اسکریپت یه خط دستور بهت میده — همون رو کپی/پیست کن تا اگه سرور یه وقت ری‌استارت شد، Bot خودش دوباره روشن بشه.
+
+### دستورات مفید بعد از نصب
+```bash
+pm2 status              # وضعیت Bot
+pm2 logs mcoc-bot        # لاگ‌های زنده
+pm2 restart mcoc-bot --update-env   # بعد از تغییر .env
+```
+
+هر وقت تست کردی، بگو تا بریم سراغ فاز بعدی (Follow/Sub alerts).
+
+---
+
+## فاز ۳: Follow / Sub Alerts
+
+### مرحله ۱: ثبت یه App روی Twitch
+1. برو به https://dev.twitch.tv/console/apps (با همون اکانتی که Streamer هستی وارد شو)
+2. **Register Your Application**
+3. **Name**: هرچی دوست داری (مثلاً `BehnamBorzoo MCOC Bot`)
+4. **OAuth Redirect URLs**: بذار `https://twitchtokengenerator.com/callback` (چون از این سایت برای گرفتن توکن استفاده می‌کنیم)
+5. **Category**: Chat Bot
+6. بعد از ساخت، یه **Client ID** بهت میده — کپیش کن، توی `.env` می‌خوایمش (`TWITCH_CLIENT_ID`)
+
+### مرحله ۲: گرفتن Access Token با اسکوپ درست
+1. برو به https://twitchtokengenerator.com
+2. گزینه **Custom Scope Token** رو انتخاب کن
+3. این دو اسکوپ رو تیک بزن:
+   - `moderator:read:followers`
+   - `channel:read:subscriptions`
+4. **Generate Token** بزن و با اکانت Twitch خودت (صاحب کانال) تایید کن
+5. یه **Access Token** بهت میده — همینو توی `.env` بذار (`TWITCH_ACCESS_TOKEN`)
+
+⚠️ این توکن معمولاً بعد از چند ساعت/روز منقضی میشه. اگه یه وقت Alert ها کار نکردن، احتمالاً باید یه توکن جدید بگیری (بعداً می‌تونیم Refresh خودکار هم اضافه کنیم).
+
+### مرحله ۳: مقادیر رو توی .env پر کن
+```
+TWITCH_CLIENT_ID=...
+TWITCH_ACCESS_TOKEN=...
+```
+
+### مرحله ۴: آپدیت روی VPS
+از توی پوشه پروژه روی VPS (توی Termius):
+```bash
+git pull
+npm install
+nano .env    # مقادیر جدید رو اضافه کن، Ctrl+O و Ctrl+X برای ذخیره
+pm2 restart mcoc-bot --update-env
+pm2 logs mcoc-bot
+```
+اگه توی لاگ خط `✅ Subscribed to channel.follow` و `✅ Subscribed to channel.subscribe` رو دیدی، یعنی وصل شده. حالا هر Follow/Sub جدید یه پیام خودکار توی چت میفته.
+
+هر وقت تست کردی، بگو بریم سراغ فاز بعدی (Poll سیستم برای رأی‌گیری Champion در BG).
+
+---
+
+## فاز ۴: سیستم رأی‌گیری (Poll) برای BG
+
+نیازی به تنظیمات اضافه نیست — فقط `git pull` و `pm2 restart` کافیه. کامندهای جدید:
+
+### شروع رأی‌گیری (فقط مدیر یا برودکستر)
+```
+!startvote Shathra, Photon, Kushala
+```
+تا ۵ گزینه پشتیبانی میشه، با کاما یا `|` جدا کن.
+
+### رأی دادن (همه می‌تونن)
+```
+!vote 1
+!vote 2
+!vote 3
+```
+هر نفر می‌تونه چندبار رأی بده — فقط آخرین رأیش حساب میشه (اگه نظرش عوض شد).
+
+### دیدن نتیجه لحظه‌ای (همه می‌تونن)
+```
+!votes
+```
+
+### تموم کردن دستی (فقط مدیر یا برودکستر)
+```
+!endvote
+```
+
+### تموم شدن خودکار
+اگه دستی تمومش نکنی، بعد از **۶۰ ثانیه** (قابل تنظیم با `POLL_DURATION_SECONDS` توی `.env`) خودش نتیجه رو اعلام می‌کنه.
+
+هر وقت تست کردی، بگو — تا اینجا هر ۴ فاز اصلی تکمیل شده. اگه ایده‌ی جدیدی داشتی (مثلاً یه کامند دیگه، یا صدای TTS برای Follow) بگو باهم اضافه‌ش کنیم.
