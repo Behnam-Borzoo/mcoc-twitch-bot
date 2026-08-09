@@ -26,7 +26,7 @@ fi
 
 # ---------- ۳. گرفتن آدرس Repo از کاربر ----------
 if [ -z "$1" ]; then
-  read -p "🔗 آدرس گیت‌هاب ریپوی خودت رو وارد کن (مثلاً https://github.com/user/repo.git): " REPO_URL
+  read -p "🔗 آدرس گیت‌هاب ریپوی خودت رو وارد کن (مثلاً https://github.com/Behnam-Borzoo/mcoc-twitch-bot.git): " REPO_URL
 else
   REPO_URL="$1"
 fi
