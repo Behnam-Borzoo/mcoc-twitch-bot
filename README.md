@@ -5,7 +5,7 @@
 اگه پروژه رو روی GitHub آپلود کردی، فقط این یه خط رو روی VPS بزن:
 
 ```bash
-curl -o deploy.sh https://raw.githubusercontent.com/Behnam-Borzoo/mcoc-twitch-bot/main/deploy.sh && bash deploy.sh
+curl -o deploy.sh https://github.com/Behnam-Borzoo/mcoc-twitch-bot/blob/main/deploy.sh && bash deploy.sh
 ```
 
 یا اگه فایل `deploy.sh` رو دستی روی سرور آپلود کردی:
