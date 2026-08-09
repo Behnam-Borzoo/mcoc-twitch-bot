@@ -1,5 +1,6 @@
 import tmi from 'tmi.js';
 import dotenv from 'dotenv';
+import { startEventSub } from './eventsub.js';
 dotenv.config();
 
 // -------------------- تنظیمات --------------------
@@ -141,3 +142,25 @@ setInterval(() => {
 }, AUTO_MESSAGE_INTERVAL_MINUTES * 60 * 1000);
 
 console.log('✅ MCOC Bot is starting...');
+
+// -------------------- Follow / Sub Alerts (EventSub) --------------------
+if (process.env.TWITCH_CLIENT_ID && process.env.TWITCH_ACCESS_TOKEN) {
+  startEventSub({
+    clientId: process.env.TWITCH_CLIENT_ID,
+    accessToken: process.env.TWITCH_ACCESS_TOKEN,
+    channelLogin: process.env.TWITCH_CHANNEL,
+    onEvent: (type, event) => {
+      const channel = `#${process.env.TWITCH_CHANNEL}`;
+
+      if (type === 'channel.follow') {
+        client.say(channel, `🎉 Welcome ${event.user_name}! Thanks for the follow! 🔥`);
+      }
+
+      if (type === 'channel.subscribe') {
+        client.say(channel, `⭐ ${event.user_name} just subscribed! Thank you so much! 💪`);
+      }
+    },
+  }).catch((err) => console.error('❌ EventSub failed to start:', err.message));
+} else {
+  console.log('ℹ️ TWITCH_CLIENT_ID / TWITCH_ACCESS_TOKEN تنظیم نشده — Follow/Sub alerts غیرفعاله.');
+}
