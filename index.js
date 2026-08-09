@@ -1,6 +1,7 @@
 import tmi from 'tmi.js';
 import dotenv from 'dotenv';
 import { startEventSub } from './eventsub.js';
+import { startPoll, castVote, getTally, endPoll, isPollActive } from './poll.js';
 dotenv.config();
 
 // -------------------- تنظیمات --------------------
@@ -22,7 +23,7 @@ const commands = {
   '!rank': () => `⭐ Champion Rank: ${process.env.CURRENT_RANK}`,
   '!bg': () => `⚔️ Battlegrounds season is live! Ask chat for counter suggestions with !counter [champ name]`,
   '!discord': () => `💬 Join the Discord: ${process.env.DISCORD_LINK}`,
-  '!commands': () => `Available commands: !champ, !rank, !bg, !discord, !commands`,
+  '!commands': () => `Available commands: !champ, !rank, !bg, !discord, !commands, !vote [number], !votes`,
 };
 
 // -------------------- تشخیص خودکار سؤال --------------------
@@ -87,6 +88,15 @@ async function askClaude(question, username) {
   return textBlock ? textBlock.text.trim() : null;
 }
 
+// -------------------- چک کردن اینکه کاربر مدیر/برودکستره --------------------
+function isModOrBroadcaster(tags) {
+  if (tags.badges && tags.badges.broadcaster) return true;
+  return !!tags.mod;
+}
+
+// -------------------- مدت‌زمان پیش‌فرض رأی‌گیری (ثانیه) --------------------
+const POLL_DURATION_SECONDS = Number(process.env.POLL_DURATION_SECONDS || 60);
+
 client.on('message', async (channel, tags, message, self) => {
   if (self) return; // پیام خود بات رو نادیده بگیر
 
@@ -96,6 +106,52 @@ client.on('message', async (channel, tags, message, self) => {
   // کامندهای ثابت (اولویت با اینهاست)
   if (commands[msg]) {
     client.say(channel, commands[msg]());
+    return;
+  }
+
+  // -------------------- کامندهای رأی‌گیری --------------------
+  if (msg.startsWith('!startvote ')) {
+    if (!isModOrBroadcaster(tags)) {
+      client.say(channel, `@${username} فقط مدیر یا برودکستر می‌تونه رأی‌گیری شروع کنه.`);
+      return;
+    }
+    const optionsRaw = message.slice(11).trim();
+    const result = startPoll(optionsRaw, POLL_DURATION_SECONDS, (endMessage) => {
+      client.say(channel, endMessage);
+    });
+    client.say(channel, result.ok ? result.message : `⚠️ ${result.error}`);
+    return;
+  }
+
+  if (msg.startsWith('!vote ')) {
+    const num = parseInt(message.slice(6).trim(), 10);
+    if (isNaN(num)) return;
+    const result = castVote(username, num);
+    if (!result.ok && result.error) {
+      client.say(channel, `@${username} ${result.error}`);
+    }
+    // موفق بود یا پول فعال نبود → بی‌سروصدا، برای جلوگیری از اسپم چت
+    return;
+  }
+
+  if (msg === '!votes') {
+    const tally = getTally();
+    if (!tally) {
+      client.say(channel, 'الان رأی‌گیری‌ای فعال نیست.');
+      return;
+    }
+    const breakdown = tally.map((t) => `${t.option}: ${t.votes}`).join('  |  ');
+    client.say(channel, `📊 ${breakdown}`);
+    return;
+  }
+
+  if (msg === '!endvote') {
+    if (!isModOrBroadcaster(tags)) {
+      client.say(channel, `@${username} فقط مدیر یا برودکستر می‌تونه رأی‌گیری رو تموم کنه.`);
+      return;
+    }
+    const result = endPoll();
+    client.say(channel, result || 'الان رأی‌گیری‌ای فعال نیست.');
     return;
   }
 
