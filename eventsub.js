@@ -41,8 +41,9 @@ async function createSubscription(type, version, condition, sessionId, clientId,
 }
 
 // -------------------- شروع اتصال EventSub --------------------
-// onEvent(type, event) هر بار که یه Follow یا Sub جدید بیاد صدا زده میشه
-export async function startEventSub({ clientId, accessToken, channelLogin, onEvent }) {
+// getAccessToken باید یه تابع async باشه که همیشه توکن تازه برمی‌گردونه (از twitchAuth.js)
+export async function startEventSub({ clientId, getAccessToken, channelLogin, onEvent }) {
+  const accessToken = await getAccessToken();
   const broadcasterId = await getBroadcasterId(channelLogin, clientId, accessToken);
   console.log(`📡 Broadcaster ID for ${channelLogin}: ${broadcasterId}`);
 
@@ -59,24 +60,24 @@ export async function startEventSub({ clientId, accessToken, channelLogin, onEve
         const sessionId = msg.payload.session.id;
         console.log('👋 EventSub session established:', sessionId);
 
-        // Follow alerts (نسخه ۲ نیاز به moderator_user_id داره — برای صاحب کانال، همون broadcaster_id کافیه)
+        const freshToken = await getAccessToken();
+
         await createSubscription(
           'channel.follow',
           '2',
           { broadcaster_user_id: broadcasterId, moderator_user_id: broadcasterId },
           sessionId,
           clientId,
-          accessToken
+          freshToken
         );
 
-        // Subscription alerts
         await createSubscription(
           'channel.subscribe',
           '1',
           { broadcaster_user_id: broadcasterId },
           sessionId,
           clientId,
-          accessToken
+          freshToken
         );
       }
 
@@ -90,7 +91,6 @@ export async function startEventSub({ clientId, accessToken, channelLogin, onEve
         console.log('🔄 EventSub asked us to reconnect...');
         ws.close();
         const newWs = new WebSocket(newUrl);
-        // فعلاً ساده: کانکشن جدید رو با همون هندلرها وصل می‌کنیم با ری‌کانکت کامل
         newWs.on('open', () => console.log('🔌 Reconnected to EventSub'));
       }
     });
