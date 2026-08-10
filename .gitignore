@@ -1,3 +1,7 @@
-.env
 node_modules/
+.env
 *.log
+record.json
+points.json
+twitch_token.json
+new_followers.json
